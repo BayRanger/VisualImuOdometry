@@ -1,9 +1,15 @@
 #include <iostream>
 #include <random>
 #include "backend/problem.h"
+#include <fstream>
+
 
 using namespace myslam::backend;
 using namespace std;
+
+
+std::ofstream outfile;
+
 
 // 曲线模型的顶点，模板参数：优化变量维度和数据类型
 class CurveFittingVertex: public Vertex
@@ -28,15 +34,25 @@ public:
     virtual void ComputeResidual() override
     {
         Vec3 abc = verticies_[0]->Parameters();  // 估计的参数
-        residual_(0) = std::exp( abc(0)*x_*x_ + abc(1)*x_ + abc(2) ) - y_;  // 构建残差
+        //FunctionType f_type = exp;
+        switch (f_type_) {
+            case exp: residual_(0) = std::exp( abc(0)*x_*x_ + abc(1)*x_ + abc(2) ) - y_; break;
+            case quadratic:residual_(0) = ( abc(0)*x_*x_ + abc(1)*x_ + abc(2) ) - y_; break; // 构建残差 
+
+        }
     }
 
     // 计算残差对变量的雅克比
     virtual void ComputeJacobians() override
     {
         Vec3 abc = verticies_[0]->Parameters();
-        double exp_y = std::exp( abc(0)*x_*x_ + abc(1)*x_ + abc(2) );
+        //double exp_y = std::exp( abc(0)*x_*x_ + abc(1)*x_ + abc(2) );
+        double exp_y=1;
+        switch (f_type_) {
+            case exp: exp_y = std::exp( abc(0)*x_*x_ + abc(1)*x_ + abc(2) ); break;
+            case quadratic: exp_y = 1.0; break; 
 
+        }
         Eigen::Matrix<double, 1, 3> jaco_abc;  // 误差为1维，状态量 3 个，所以是 1x3 的雅克比矩阵
         jaco_abc << x_ * x_ * exp_y, x_ * exp_y , 1 * exp_y;
         jacobians_[0] = jaco_abc;
@@ -45,13 +61,21 @@ public:
     virtual std::string TypeInfo() const override { return "CurveFittingEdge"; }
 public:
     double x_,y_;  // x 值， y 值为 _measurement
+
+private:
+enum FunctionType { exp, quadratic };
+FunctionType f_type_ = exp;
+
+
 };
 
 int main()
 {
+    //std::ofstream outfile;
+    outfile.open("/home/chahe/project/VisualImuOdometry/chapter3/CurveFitting_LM/data.txt");
     double a=1.0, b=2.0, c=1.0;         // 真实参数值
     int N = 100;                          // 数据点
-    double w_sigma= 1.;                 // 噪声Sigma值
+    double w_sigma= 1;                 // 噪声Sigma值
 
     std::default_random_engine generator;
     std::normal_distribution<double> noise(0.,w_sigma);
@@ -66,13 +90,17 @@ int main()
     problem.AddVertex(vertex);
 
     // 构造 N 次观测
+    double noise_ratio =0;
     for (int i = 0; i < N; ++i) {
 
         double x = i/100.;
         double n = noise(generator);
         // 观测 y
-        double y = std::exp( a*x*x + b*x + c ) + n;
-//        double y = std::exp( a*x*x + b*x + c );
+
+        double y_gt = std::exp( a*x*x + b*x + c ) + n;
+        //double y_gt = a*x*x + b*x + c;
+        double y = y_gt +n;
+        noise_ratio+=std::fabs(y-y_gt)/std::fabs(y_gt);
 
         // 每个观测对应的残差函数
         shared_ptr< CurveFittingEdge > edge(new CurveFittingEdge(x,y));
@@ -83,6 +111,7 @@ int main()
         // 把这个残差添加到最小二乘问题
         problem.AddEdge(edge);
     }
+    noise_ratio = noise_ratio/(N)*100;
 
     std::cout<<"\nTest CurveFitting start..."<<std::endl;
     /// 使用 LM 求解
@@ -91,7 +120,9 @@ int main()
     std::cout << "-------After optimization, we got these parameters :" << std::endl;
     std::cout << vertex->Parameters().transpose() << std::endl;
     std::cout << "-------ground truth: " << std::endl;
-    std::cout << "1.0,  2.0,  1.0" << std::endl;
+    std::cout<<"The noise ratio is "<<noise_ratio<<"%"<<std::endl;
+    std::cout << a <<", "<<b<<", "<<c<< std::endl;
+    outfile.close();
 
     // std
     return 0;
