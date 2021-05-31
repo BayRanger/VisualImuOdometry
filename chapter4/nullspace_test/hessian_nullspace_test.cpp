@@ -16,23 +16,29 @@ struct Pose
     Eigen::Vector3d twc;
 };
 int main()
-{
+{   //geature number
     int featureNums = 20;
+    //camera pose number
     int poseNums = 10;
-    int diem = poseNums * 6 + featureNums * 3;
+    //The dimesion to optimize (pose and feature)
+    int dime = poseNums * 6 + featureNums * 3;
+    //focal length
     double fx = 1.;
     double fy = 1.;
-    Eigen::MatrixXd H(diem,diem);
+    Eigen::MatrixXd H(dime,dime);
     H.setZero();
 
     std::vector<Pose> camera_pose;
     double radius = 8;
+    //The poses are around a quarter of the circle.
     for(int n = 0; n < poseNums; ++n ) {
         double theta = n * 2 * M_PI / ( poseNums * 4); // 1/4 圆弧
         // 绕 z轴 旋转
         Eigen::Matrix3d R;
         R = Eigen::AngleAxisd(theta, Eigen::Vector3d::UnitZ());
         Eigen::Vector3d t = Eigen::Vector3d(radius * cos(theta) - radius, radius * sin(theta), 1 * sin(2 * theta));
+        std::cout<<t[0]<<", "<<t[1]<<", "<<t[2]<<std::endl;
+        
         camera_pose.push_back(Pose(R,t));
     }
 
@@ -71,6 +77,11 @@ int main()
 	    // H.block(?,?,?,?) += ?;
 	    // H.block(?,?,?,?) += ?;
             // H.block(?,?,?,?) += ?;
+            H.block(poseNums*6+j*3,poseNums*6+j*3,3,3) +=jacobian_Pj.transpose() * jacobian_Pj;
+            H.block(i*6,poseNums*6+j*3,6,3) +=jacobian_Ti.transpose() * jacobian_Pj;
+            H.block(poseNums*6+j*3,i*6,3,6) +=jacobian_Pj.transpose() * jacobian_Ti;
+
+
         }
     }
 
@@ -79,7 +90,7 @@ int main()
 //    std::cout << saes.eigenvalues() <<std::endl;
 
     Eigen::JacobiSVD<Eigen::MatrixXd> svd(H, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    std::cout << svd.singularValues() <<std::endl;
+    std::cout <<"Singular values "<< svd.singularValues() <<std::endl;
   
     return 0;
 }
