@@ -12,6 +12,7 @@
 #endif
 
 using namespace std;
+extern std::ofstream outfile;
 
 
 namespace myslam {
@@ -79,6 +80,8 @@ bool Problem::Solve(int iterations) {
     while (!stop && (iter < iterations)) {
         std::cout << "iter: " << iter << " , chi= " << currentChi_ << " , Lambda= " << currentLambda_
                   << std::endl;
+        outfile<< "iter: " << iter << " , chi= " << currentChi_ << " , Lambda= " << currentLambda_
+                  << std::endl;
         bool oneStepSuccess = false;
         int false_cnt = 0;
         while (!oneStepSuccess)  // 不断尝试 Lambda, 直到成功迭代一步
@@ -92,6 +95,8 @@ bool Problem::Solve(int iterations) {
 
             // 优化退出条件1： delta_x_ 很小则退出
             if (delta_x_.squaredNorm() <= 1e-6 || false_cnt > 10) {
+            //if ( false_cnt > 10) {
+
                 stop = true;
                 break;
             }
@@ -141,6 +146,7 @@ void Problem::SetOrdering() {
     for (auto vertex: verticies_) {
         ordering_generic_ += vertex.second->LocalDimension();  // 所有的优化变量总维数
     }
+    std::cout<<"Dim of ordering generic is "<<ordering_generic_<<std::endl;
 }
 
 void Problem::MakeHessian() {
@@ -149,21 +155,21 @@ void Problem::MakeHessian() {
     ulong size = ordering_generic_;
     MatXX H(MatXX::Zero(size, size));
     VecX b(VecX::Zero(size));
+    JtW_ =VecX::Zero(size);
 
+    std::cout<<"The size of Hessian matrix is "<<size<<", "<<size<<std::endl;
     // TODO:: accelate, accelate, accelate
-//#ifdef USE_OPENMP
-//#pragma omp parallel for
-//#endif
+ 
 
     // 遍历每个残差，并计算他们的雅克比，得到最后的 H = J^T * J
     for (auto &edge: edges_) {
 
         edge.second->ComputeResidual();
         edge.second->ComputeJacobians();
-
         auto jacobians = edge.second->Jacobians();
         auto verticies = edge.second->Verticies();
         assert(jacobians.size() == verticies.size());
+        //std::cout<<"The size of vertices "<< verticies.size() <<std::endl;
         for (size_t i = 0; i < verticies.size(); ++i) {
             auto v_i = verticies[i];
             if (v_i->IsFixed()) continue;    // Hessian 里不需要添加它的信息，也就是它的雅克比为 0
@@ -196,6 +202,8 @@ void Problem::MakeHessian() {
 
     }
     Hessian_ = H;
+    Hessian_tmp_ = H;
+    //std::cout<<"The updated Hessian is\n "<<Hessian_ <<std::endl;
     b_ = b;
     t_hessian_cost_ += t_h.toc();
 
@@ -256,14 +264,17 @@ void Problem::ComputeLambdaInitLM() {
         maxDiagonal = std::max(fabs(Hessian_(i, i)), maxDiagonal);
     }
     double tau = 1e-5;
-    currentLambda_ = tau * maxDiagonal;
+    //currentLambda_ = tau * maxDiagonal;//slide 16
+    currentLambda_ = 1e-3;
 }
 
 void Problem::AddLambdatoHessianLM() {
     ulong size = Hessian_.cols();
     assert(Hessian_.rows() == Hessian_.cols() && "Hessian is not square");
     for (ulong i = 0; i < size; ++i) {
-        Hessian_(i, i) += currentLambda_;
+        //Hessian_(i, i) += currentLambda_;
+        Hessian_(i, i) += currentLambda_*Hessian_tmp_(i, i);
+    
     }
 }
 
@@ -272,14 +283,14 @@ void Problem::RemoveLambdaHessianLM() {
     assert(Hessian_.rows() == Hessian_.cols() && "Hessian is not square");
     // TODO:: 这里不应该减去一个，数值的反复加减容易造成数值精度出问题？而应该保存叠加lambda前的值，在这里直接赋值
     for (ulong i = 0; i < size; ++i) {
-        Hessian_(i, i) -= currentLambda_;
+        Hessian_(i, i) =Hessian_tmp_(i, i);
     }
 }
 
 bool Problem::IsGoodStepInLM() {
-    double scale = 0;
-    scale = delta_x_.transpose() * (currentLambda_ * delta_x_ + b_);
-    scale += 1e-3;    // make sure it's non-zero :)
+    // double scale = 0;
+    // scale = delta_x_.transpose() * (currentLambda_ * delta_x_ + b_);
+    // scale += 1e-3;    // make sure it's non-zero :)
 
     // recompute residuals after update state
     // 统计所有的残差
@@ -289,21 +300,70 @@ bool Problem::IsGoodStepInLM() {
         tempChi += edge.second->Chi2();
     }
 
-    double rho = (currentChi_ - tempChi) / scale;
+    //double rho = (currentChi_ - tempChi) / scale;
+    double rho = (currentChi_ - tempChi)/(delta_x_.transpose()*(currentLambda_*Hessian_.diagonal().asDiagonal()*delta_x_+b_));
+    double L_up = 11;
+    double L_down = 9;
     if (rho > 0 && isfinite(tempChi))   // last step was good, 误差在下降
     {
-        double alpha = 1. - pow((2 * rho - 1), 3);
-        alpha = std::min(alpha, 2. / 3.);
-        double scaleFactor = (std::max)(1. / 3., alpha);
-        currentLambda_ *= scaleFactor;
-        ni_ = 2;
+        currentLambda_ =std::max(currentLambda_/L_down,1e-7);
+        // double alpha = 1. - pow((2 * rho - 1), 3);
+        // alpha = std::min(alpha, 2. / 3.);
+        // double scaleFactor = (std::max)(1. / 3., alpha);
+        // currentLambda_ *= scaleFactor;
+        // ni_ = 2;
         currentChi_ = tempChi;
         return true;
     } else {
-        currentLambda_ *= ni_;
-        ni_ *= 2;
+        if(!isfinite(tempChi)) {
+            std::cout<<"residual is too large"<<std::endl;
+        }
+        // currentLambda_ *= ni_;
+        // ni_ *= 2;
+        currentLambda_ = std::min(currentLambda_*L_up,1e7);
         return false;
     }
+}
+bool Problem::IsGoodStepInLM(int method_idx,double param) {
+//    double e_threshold = 0.1; 
+    
+//     double scale = 0;
+//     scale = delta_x_.transpose() * (currentLambda_ * delta_x_ + b_);
+//     scale += 1e-3;    // make sure it's non-zero :)
+
+//     // recompute residuals after update state
+//     // 统计所有的残差
+//     double tempChi = 0.0;
+//     for (auto edge: edges_) {
+//         edge.second->ComputeResidual();
+//         tempChi += edge.second->Chi2();
+//     }
+//     double enumerater = (currentChi_ - tempChi) ;
+//     double denum = delta_x_.transpose()*(currentLambda_* delta_x_ + b_ );//b_的符号可能错了`
+//     double bench1 =enumerater/denum;
+//     double factor;
+//     if (bench1>e_threshold)
+//     {
+//         factor = (b_.transpose()*delta_x_)/((tempChi - currentChi_)/2.0+2*(b_.transpose()*delta_x_));
+//                 currentLambda_ *= scaleFactor;
+
+//     }
+//     double rho = (currentChi_ - tempChi) / scale;
+//     if (rho > 0 && isfinite(tempChi))   // last step was good, 误差在下降
+//     {
+//         double alpha = 1. - pow((2 * rho - 1), 3);
+//         alpha = std::min(alpha, 2. / 3.);
+//         double scaleFactor = (std::max)(1. / 3., alpha);
+//         currentLambda_ *= scaleFactor;
+//         ni_ = 2;
+//         currentChi_ = tempChi;
+//         return true;
+//     } else {
+//         currentLambda_ *= ni_;
+//         ni_ *= 2;
+//         return false;
+//     }
+return true;
 }
 
 /** @brief conjugate gradient with perconditioning

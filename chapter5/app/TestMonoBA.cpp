@@ -73,12 +73,12 @@ int main() {
     vector<shared_ptr<VertexPose> > vertexCams_vec;
     for (size_t i = 0; i < cameras.size(); ++i) {
         shared_ptr<VertexPose> vertexCam(new VertexPose());
-        Eigen::VectorXd pose(7);
+        Eigen::VectorXd pose(7);//相机的信息维度7，平移+四元数（6自由度）
         pose << cameras[i].twc, cameras[i].qwc.x(), cameras[i].qwc.y(), cameras[i].qwc.z(), cameras[i].qwc.w();
         vertexCam->SetParameters(pose);
 
 //        if(i < 2)
-//            vertexCam->SetFixed();
+//            vertexCam->SetFixed();//设置定点为fix。避免被优化
 
         problem.AddVertex(vertexCam);
         vertexCams_vec.push_back(vertexCam);
