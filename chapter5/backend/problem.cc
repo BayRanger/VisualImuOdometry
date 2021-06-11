@@ -314,14 +314,12 @@ void Problem::MakeHessian() {
                 MatXX hessian = JtW * jacobian_j;
                 // 所有的信息矩阵叠加起来
                 // TODO:: home work. 完成 H index 的填写.
-                // H.block(?,?, ?, ?).noalias() += hessian;
  
                 H.block(index_i,index_j, dim_i, dim_j).noalias() += hessian;
  
                 if (j != i) {
                     // 对称的下三角
 		    // TODO:: home work. 完成 H index 的填写.
-                    // H.block(?,?, ?, ?).noalias() += hessian.transpose();
                     H.block(index_j,index_i, dim_j, dim_i).noalias() += hessian.transpose();
 
                 }
@@ -377,8 +375,8 @@ void Problem::SolveLinearSystem() {
         // MatXX Hmp = Hessian_.block(?,?, ?, ?);
         MatXX Hmp = Hessian_.block(ordering_poses_,0,ordering_landmarks_,ordering_poses_);
         // VecX bpp = b_.segment(?,?);
-        VecX bpp = -b_.segment(0,ordering_poses_);
-        VecX bmm = -b_.segment(ordering_poses_,ordering_landmarks_);
+        VecX bpp = b_.segment(0,ordering_poses_);
+        VecX bmm = b_.segment(ordering_poses_,ordering_landmarks_);
 
         // Hmm 是对角线矩阵，它的求逆可以直接为对角线块分别求逆，如果是逆深度，对角线块为1维的，则直接为对角线的倒数，这里可以加速
         MatXX Hmm_inv(MatXX::Zero(marg_size, marg_size));
@@ -612,7 +610,7 @@ void Problem::TestMarginalize() {
     Eigen::MatrixXd Amr = H_marg.block(2,0,1,2);
     Eigen::MatrixXd Arr = H_marg.block(0,0,2,2);
 /*
-|------|----
+|------|---|
 |Arr   |Arm|   
 |______|___|
 |Amr___|Amm|
