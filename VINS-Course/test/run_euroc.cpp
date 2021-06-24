@@ -149,14 +149,16 @@ void DrawIMGandGLinMainThrd(){
 
 int main(int argc, char **argv)
 {
-	if(argc != 3)
+	if(argc < 2)
 	{
 		cerr << "./run_euroc PATH_TO_FOLDER/MH-05/mav0 PATH_TO_CONFIG/config \n" 
 			<< "For example: ./run_euroc /home/stevencui/dataset/EuRoC/MH-05/mav0/ ../config/"<< endl;
 		return -1;
 	}
 	sData_path = argv[1];
-	sConfig_path = argv[2];
+	//sConfig_path = argv[2];
+	sConfig_path = "../config/";
+
 
 	pSystem.reset(new System(sConfig_path));
 	

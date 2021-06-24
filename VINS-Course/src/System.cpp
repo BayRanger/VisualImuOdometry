@@ -127,7 +127,7 @@ void System::PubImageData(double dStampSec, Mat &img)
                     feature_points->id_of_point.push_back(p_id * NUM_OF_CAM + i);
                     feature_points->u_of_point.push_back(cur_pts[j].x);
                     feature_points->v_of_point.push_back(cur_pts[j].y);
-                    feature_points->velocity_x_of_point.push_back(pts_velocity[j].x);
+                    feature_points->velocity_x_of_point.push_back(pts_velocity[j].x);//这是为了imu和图像之间的时间戳对齐. 感兴趣的可以读iros qintong的paper
                     feature_points->velocity_y_of_point.push_back(pts_velocity[j].y);
                 }
             }
@@ -170,7 +170,7 @@ void System::PubImageData(double dStampSec, Mat &img)
     
 }
 
-vector<pair<vector<ImuConstPtr>, ImgConstPtr>> System::getMeasurements()
+vector<pair<vector<ImuConstPtr>, ImgConstPtr>> System::getMeasurements() //形成imu和imge的pair
 {
     vector<pair<vector<ImuConstPtr>, ImgConstPtr>> measurements;
 
@@ -237,7 +237,7 @@ void System::PubImuData(double dStampSec, const Eigen::Vector3d &vGyr,
     //     << " acc: " << imu_msg->linear_acceleration.transpose()
     //     << " gyr: " << imu_msg->angular_velocity.transpose() << endl;
     m_buf.lock();
-    imu_buf.push(imu_msg);
+    imu_buf.push(imu_msg);//通过时间戳实现图像和imu匹配
     // cout << "1 PubImuData t: " << fixed << imu_msg->header 
     //     << " imu_buf size:" << imu_buf.size() << endl;
     m_buf.unlock();
