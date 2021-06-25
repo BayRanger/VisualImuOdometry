@@ -318,7 +318,7 @@ void System::ProcessBackEnd()
             for (unsigned int i = 0; i < img_msg->points.size(); i++) 
             {
                 int v = img_msg->id_of_point[i] + 0.5;
-                int feature_id = v / NUM_OF_CAM;
+                int feature_id = v / NUM_OF_CAM;//此处是单目相机,所以只有一个
                 int camera_id = v % NUM_OF_CAM;
                 double x = img_msg->points[i].x();
                 double y = img_msg->points[i].y();
