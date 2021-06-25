@@ -73,10 +73,10 @@ vector<double> ParseImageTimestamp()
 	{
 		std::istringstream ssTimestamp(ts_line);
 		ssTimestamp >> StampSec;
-		cout << "timestamp: " <<StampSec << endl;
+		//cout << "timestamp: " <<StampSec << endl;
 		ts_vec.push_back(StampSec);
 		//pSystem->PubImuData(StampNSec, vGyr, vAcc);
-		usleep(5000*nDelayTimes);
+		//usleep(5000*nDelayTimes);
 	}
 	fsCam.close();
 
@@ -117,15 +117,17 @@ void ParseImageData()
 			cerr << "Failed to open image file! " << imagePath << endl;
 			return;
 		}
-		std::string sImg_line;
+		//std::string sImg_point;
+		std::string sImg_point;
+
 		double _;//read useless data
 		int image_w = 640;
 		Mat image_frame = Mat::zeros( image_w, image_w, CV_8UC3 );
 
-		while (std::getline(fsImg, sImg_line) && !sImg_line.empty()) // read imu data
+		while (std::getline(fsImg, sImg_point) && !sImg_point.empty()) // read imu data
 		{
 			pair<double,double> img_pair;
-			std::istringstream ssImgData(sImg_line);
+			std::istringstream ssImgData(sImg_point);
 			double f = 460;
 			double cx= 255;
 			ssImgData >>_>>_>>_>>_>>img_pair.first >> img_pair.second;
@@ -134,8 +136,45 @@ void ParseImageData()
         	cv::circle(image_frame, center,1,CV_RGB(255,0,0),3);
 			//pSystem->PubImuData(StampNSec, vGyr, vAcc);
 			//usleep(5000*nDelayTimes);
+			//cout<<center.x<<" "<<center.y<<", ";
 		}
 		fsImg.close();
+		//
+
+        file = stringstream();
+		file<<"/keyframe/all_lines_"<<i<<".txt";
+		filename = file.str();
+		imagePath = sConfig_path +filename;
+		//std::cout<<imagePath<<std::endl;
+		fsImg.open(imagePath.c_str());
+		if (!fsImg.is_open())
+		{
+			cerr << "Failed to open image file! " << imagePath << endl;
+			return;
+		}
+		std::string sImg_line;
+
+		//int image_w = 640;
+		//Mat image_frame = Mat::zeros( image_w, image_w, CV_8UC3 );
+
+		while (std::getline(fsImg, sImg_line) && !sImg_line.empty()) // read imu data
+		{
+			
+			std::istringstream ssImgLine(sImg_line);
+			double f = 460;
+			double cx= 255;
+			double l1x,l1y,l2x,l2y;
+			ssImgLine >>l1x>>l1y>>l2x>>l2y;
+			cv::Point p1(l1x*f+cx,l1y*f+cx),p2(l2x*f+cx,l2y*f+cx);
+			//cout<< p1.x<<", "<<p1.y<<", "<<p2.x<<", "<<p2.y<<endl;
+			//cout << img_pair.first*f+cx<<", "<<img_pair.second*f+cx<< endl;
+			//auto center = cv::Point(img_pair.first*f+cx,img_pair.second*f+cx);
+        	cv::line(image_frame, p1,p2,CV_RGB(0,255,0),3);
+			//pSystem->PubImuData(StampNSec, vGyr, vAcc);
+			//usleep(5000*nDelayTimes);
+		}
+		fsImg.close();
+		
 
 
 		// Mat img = imread(imagePath.c_str(), 0);
