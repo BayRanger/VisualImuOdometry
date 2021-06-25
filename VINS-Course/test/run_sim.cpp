@@ -119,12 +119,19 @@ void ParseImageData()
 		}
 		std::string sImg_line;
 		double _;//read useless data
+		int image_w = 640;
+		Mat image_frame = Mat::zeros( image_w, image_w, CV_8UC3 );
+
 		while (std::getline(fsImg, sImg_line) && !sImg_line.empty()) // read imu data
 		{
 			pair<double,double> img_pair;
 			std::istringstream ssImgData(sImg_line);
+			double f = 460;
+			double cx= 255;
 			ssImgData >>_>>_>>_>>_>>img_pair.first >> img_pair.second;
-			//cout << img_pair.first<<", "<<img_pair.second<< endl;
+			cout << img_pair.first*f+cx<<", "<<img_pair.second*f+cx<< endl;
+			auto center = cv::Point(img_pair.first*f+cx,img_pair.second*f+cx);
+        	cv::circle(image_frame, center,1,CV_RGB(255,0,0),3);
 			//pSystem->PubImuData(StampNSec, vGyr, vAcc);
 			//usleep(5000*nDelayTimes);
 		}
@@ -139,9 +146,9 @@ void ParseImageData()
 		// }
 
 		// pSystem->PubImageData(dStampNSec / 1e9, img);
-		// cv::imshow("SOURCE IMAGE", img);
-		// cv::waitKey(0);
-		usleep(500*nDelayTimes);
+		cv::imshow("SOURCE IMAGE", image_frame);
+		cv::waitKey(1);
+		usleep(5000*nDelayTimes);
 	}
 	
 }
