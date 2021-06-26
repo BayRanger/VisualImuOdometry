@@ -109,7 +109,7 @@ void ParseImageData()
         file<<"/keyframe/all_points_"<<i<<".txt";
 		string filename = file.str();
 		string imagePath = sConfig_path +filename;
-		std::cout<<imagePath<<std::endl;
+		//Sstd::cout<<imagePath<<std::endl;
 		ifstream fsImg;
 		fsImg.open(imagePath.c_str());
 		if (!fsImg.is_open())
@@ -121,18 +121,19 @@ void ParseImageData()
 		std::string sImg_point;
 
 		double _;//read useless data
-		int image_w = 640;
+		int image_w = 1000;
 		Mat image_frame = Mat::zeros( image_w, image_w, CV_8UC3 );
+			double cx= 500;
+			double f = 460;
+		vector<cv::Point2f> feature_vec ;
 
 		while (std::getline(fsImg, sImg_point) && !sImg_point.empty()) // read imu data
 		{
-			pair<double,double> img_pair;
+			cv::Point2f feature_pt;
 			std::istringstream ssImgData(sImg_point);
-			double f = 460;
-			double cx= 255;
-			ssImgData >>_>>_>>_>>_>>img_pair.first >> img_pair.second;
-			cout << img_pair.first*f+cx<<", "<<img_pair.second*f+cx<< endl;
-			auto center = cv::Point(img_pair.first*f+cx,img_pair.second*f+cx);
+			ssImgData >>_>>_>>_>>_>>feature_pt.x >> feature_pt.y;
+			feature_vec.push_back(feature_pt);
+			auto center = cv::Point(feature_pt.x*f+cx,feature_pt.y*f+cx);
         	cv::circle(image_frame, center,1,CV_RGB(255,0,0),3);
 			//pSystem->PubImuData(StampNSec, vGyr, vAcc);
 			//usleep(5000*nDelayTimes);
@@ -141,39 +142,37 @@ void ParseImageData()
 		fsImg.close();
 		//
 
-        file = stringstream();
-		file<<"/keyframe/all_lines_"<<i<<".txt";
-		filename = file.str();
-		imagePath = sConfig_path +filename;
-		//std::cout<<imagePath<<std::endl;
-		fsImg.open(imagePath.c_str());
-		if (!fsImg.is_open())
-		{
-			cerr << "Failed to open image file! " << imagePath << endl;
-			return;
-		}
-		std::string sImg_line;
+        // file = stringstream();
+		// file<<"/keyframe/all_lines_"<<i<<".txt";
+		// filename = file.str();
+		// imagePath = sConfig_path +filename;
+		// //std::cout<<imagePath<<std::endl;
+		// fsImg.open(imagePath.c_str());
+		// if (!fsImg.is_open())
+		// {
+		// 	cerr << "Failed to open image file! " << imagePath << endl;
+		// 	return;
+		// }
+		// std::string sImg_line;
 
-		//int image_w = 640;
-		//Mat image_frame = Mat::zeros( image_w, image_w, CV_8UC3 );
+		// //int image_w = 640;
+		// //Mat image_frame = Mat::zeros( image_w, image_w, CV_8UC3 );
 
-		while (std::getline(fsImg, sImg_line) && !sImg_line.empty()) // read imu data
-		{
+		// while (std::getline(fsImg, sImg_line) && !sImg_line.empty()) // read imu data
+		// {
 			
-			std::istringstream ssImgLine(sImg_line);
-			double f = 460;
-			double cx= 255;
-			double l1x,l1y,l2x,l2y;
-			ssImgLine >>l1x>>l1y>>l2x>>l2y;
-			cv::Point p1(l1x*f+cx,l1y*f+cx),p2(l2x*f+cx,l2y*f+cx);
-			//cout<< p1.x<<", "<<p1.y<<", "<<p2.x<<", "<<p2.y<<endl;
-			//cout << img_pair.first*f+cx<<", "<<img_pair.second*f+cx<< endl;
-			//auto center = cv::Point(img_pair.first*f+cx,img_pair.second*f+cx);
-        	cv::line(image_frame, p1,p2,CV_RGB(0,255,0),3);
-			//pSystem->PubImuData(StampNSec, vGyr, vAcc);
-			//usleep(5000*nDelayTimes);
-		}
-		fsImg.close();
+		// 	std::istringstream ssImgLine(sImg_line);
+		// 	double l1x,l1y,l2x,l2y;
+		// 	ssImgLine >>l1x>>l1y>>l2x>>l2y;
+		// 	cv::Point p1(l1x*f+cx,l1y*f+cx),p2(l2x*f+cx,l2y*f+cx);
+		// 	//cout<< p1.x<<", "<<p1.y<<", "<<p2.x<<", "<<p2.y<<endl;
+		// 	//cout << img_pair.first*f+cx<<", "<<img_pair.second*f+cx<< endl;
+		// 	//auto center = cv::Point(img_pair.first*f+cx,img_pair.second*f+cx);
+        // 	cv::line(image_frame, p1,p2,CV_RGB(0,255,0),3);
+		// 	//pSystem->PubImuData(StampNSec, vGyr, vAcc);
+		// 	//usleep(5000*nDelayTimes);
+		// }
+		// fsImg.close();
 		
 
 
@@ -184,7 +183,7 @@ void ParseImageData()
 		// 	return;
 		// }
 
-		// pSystem->PubImageData(dStampNSec / 1e9, img);
+		pSystem->PubImageFeature(dStampNSec, feature_vec);
 		cv::imshow("SOURCE IMAGE", image_frame);
 		cv::waitKey(1);
 		usleep(5000*nDelayTimes);
@@ -248,7 +247,7 @@ int main(int argc, char **argv)
 	//ParseImageTimestamp();
 
 
-	//pSystem.reset(new System(sConfig_path));
+	pSystem.reset(new System());
 	
 	//std::thread thd_BackEnd(&System::ProcessBackEnd, pSystem);
 		

@@ -37,12 +37,24 @@ struct IMG_MSG {
     vector<float> velocity_x_of_point;
     vector<float> velocity_y_of_point;
 };
+
+struct feature_msg {
+    double header;
+    vector<Vector3d> points;
+    vector<int> id_of_point;
+    vector<float> u_of_point;
+    vector<float> v_of_point;
+    //vector<float> velocity_x_of_point;
+    //vector<float> velocity_y_of_point;
+};
 typedef std::shared_ptr <IMG_MSG const > ImgConstPtr;
-    
+typedef std::shared_ptr <feature_msg const > FeatureConstPtr;
+
 class System
 {
 public:
     System(std::string sConfig_files);
+    System( );
 
     ~System();
 
@@ -50,7 +62,7 @@ public:
 
     void PubImuData(double dStampSec, const Eigen::Vector3d &vGyr, 
         const Eigen::Vector3d &vAcc);
-
+    void PubImageFeature(double dStampSec, vector<cv::Point2f> &feature_vec);
     // thread: visual-inertial odometry
     void ProcessBackEnd();
     void Draw();
@@ -58,10 +70,7 @@ public:
     pangolin::OpenGlRenderState s_cam;
     pangolin::View d_cam;
 
-#ifdef __APPLE__
-    void InitDrawGL(); 
-    void DrawGLFrame();
-#endif
+ 
 
 private:
 
@@ -87,6 +96,8 @@ private:
     double current_time = -1;
     std::queue<ImuConstPtr> imu_buf;
     std::queue<ImgConstPtr> feature_buf;
+    std::queue<FeatureConstPtr> naivefeature_buf;
+
     // std::queue<PointCloudConstPtr> relo_buf;
     int sum_of_wait = 0;
 

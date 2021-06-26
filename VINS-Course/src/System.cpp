@@ -27,6 +27,26 @@ System::System(string sConfig_file_)
     cout << "2 System() end" << endl;
 }
 
+System::System()
+    :bStart_backend(true)
+{
+    // string sConfig_file = sConfig_file_ + "euroc_config.yaml";
+
+    // cout << "1 System() sConfig_file: " << sConfig_file << endl;
+    // readParameters(sConfig_file);
+
+    // trackerData[0].readIntrinsicParameter(sConfig_file);
+
+    // estimator.setParameter();
+    // ofs_pose.open("./pose_output.txt",fstream::app | fstream::out);
+    // if(!ofs_pose.is_open())
+    // {
+    //     cerr << "ofs_pose is not open" << endl;
+    // }
+    // // thread thd_RunBackend(&System::process,this);
+    // // thd_RunBackend.detach();
+    // cout << "2 System() end" << endl;
+}
 System::~System()
 {
     bStart_backend = false;
@@ -36,6 +56,8 @@ System::~System()
     m_buf.lock();
     while (!feature_buf.empty())
         feature_buf.pop();
+    while (!naivefeature_buf.empty())
+        naivefeature_buf.pop();
     while (!imu_buf.empty())
         imu_buf.pop();
     m_buf.unlock();
@@ -49,6 +71,10 @@ System::~System()
 
 void System::PubImageData(double dStampSec, Mat &img)
 {
+    if (!FREQ)
+    {
+        FREQ =10;
+    }
     if (!init_feature)
     {
         cout << "1 PubImageData skip the first detected feature, which doesn't contain optical flow speed" << endl;
@@ -148,28 +174,100 @@ void System::PubImageData(double dStampSec, Mat &img)
                 con.notify_one();
             }
         }
-    }
-
-#ifdef __linux__
-    cv::Mat show_img;
-	cv::cvtColor(img, show_img, CV_GRAY2RGB);
-	if (SHOW_TRACK)
-	{
-		for (unsigned int j = 0; j < trackerData[0].cur_pts.size(); j++)
-        {
-			double len = min(1.0, 1.0 * trackerData[0].track_cnt[j] / WINDOW_SIZE);
-			cv::circle(show_img, trackerData[0].cur_pts[j], 2, cv::Scalar(255 * (1 - len), 0, 255 * len), 2);
-		}
-
-        cv::namedWindow("IMAGE", CV_WINDOW_AUTOSIZE);
-		cv::imshow("IMAGE", show_img);
-        cv::waitKey(1);
-	}
-#endif    
-    // cout << "5 PubImage" << endl;
-    
+    }    
 }
 
+void System::PubImageFeature(double dStampSec, vector<cv::Point2f>& img_features)
+{
+    if (!FREQ)
+    {
+        FREQ =30;
+        cout<<"frequency is "<<FREQ<<endl;
+    }
+    if (!init_feature)
+    {
+        cout << "1 PubImageData skip the first detected feature, which doesn't contain optical flow speed" << endl;
+        init_feature = 1;
+        return;
+    }
+
+    if (first_image_flag)
+    {
+        cout << "2 PubImageData first_image_flag" << endl;
+        first_image_flag = false;
+        first_image_time = dStampSec;
+        last_image_time = dStampSec;
+        return;
+    }
+    // detect unstable camera stream
+    // if (dStampSec - last_image_time > 1.0 || dStampSec < last_image_time)
+    // {
+    //     cerr << "3 PubImageData image discontinue! reset the feature tracker!" << endl;
+    //     first_image_flag = true;
+    //     last_image_time = 0;
+    //     pub_count = 1;
+    //     return;
+    // }
+    // last_image_time = dStampSec;
+    // // frequency control
+    // if (round(1.0 * pub_count / (dStampSec - first_image_time)) <= FREQ) //publish frequency is slow
+    // {
+    //     PUB_THIS_FRAME = true;
+    //     // reset the frequency control
+    //     if (abs(1.0 * pub_count / (dStampSec - first_image_time) - FREQ) < 0.01 * FREQ)
+    //     {
+    //         first_image_time = dStampSec;
+    //         pub_count = 0;
+    //     }
+    // }
+    // else
+    // {
+    //     PUB_THIS_FRAME = false;
+    // }
+    // cout<<"If pub this frame "<<PUB_THIS_FRAME<<endl;
+
+    TicToc t_r;
+    if (1)
+    {
+        pub_count++;
+        shared_ptr<feature_msg> feature_points(new feature_msg());
+        feature_points->header = dStampSec;
+ // They have the same values in x and y
+            auto &un_pts = img_features;
+            auto &cur_pts = img_features;
+            int ids_num = 36;
+            for (int j = 0; j < ids_num ; j++)
+            {
+
+                double x = un_pts[j].x;
+                double y = un_pts[j].y;
+                double z = 1;
+                feature_points->points.push_back(Vector3d(x, y, z));
+                //feature_points->id_of_point.push_back(p_id * NUM_OF_CAM + i);
+                feature_points->u_of_point.push_back(cur_pts[j].x);
+                feature_points->v_of_point.push_back(cur_pts[j].y);
+                cout<<"add id "<<j<<" point "<<cur_pts[j].x<<", "<<cur_pts[j].y<<endl; 
+
+            }
+            //}
+            // skip the first image; since no optical speed on frist image
+            if (!init_pub)
+            {
+                cout << "4 PubImage init_pub skip the first image!" << endl;
+                init_pub = 1;
+            }
+            else
+            {
+                m_buf.lock();
+                naivefeature_buf.push(feature_points);
+                //cout << "5 PubImage t : " << fixed << feature_points->header
+                //     << " feature_buf size: " << feature_buf.size() << endl;
+                m_buf.unlock();
+                con.notify_one();
+            }
+        
+    }
+}
 vector<pair<vector<ImuConstPtr>, ImgConstPtr>> System::getMeasurements() //形成imu和imge的pair
 {
     vector<pair<vector<ImuConstPtr>, ImgConstPtr>> measurements;
