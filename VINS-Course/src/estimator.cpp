@@ -43,6 +43,124 @@ void Estimator::setParameter()
     td = TD;
 }
 
+void Estimator::setSimParameter()
+{{
+ 
+ 
+    FOCAL_LENGTH = 460;
+    SOLVER_TIME = 0.04 ;
+    NUM_ITERATIONS = 8 ;
+    MIN_PARALLAX =0.02;
+    MIN_PARALLAX = MIN_PARALLAX / FOCAL_LENGTH;
+
+    string OUTPUT_PATH;
+    //fsSettings["output_path"] >> OUTPUT_PATH;
+    VINS_RESULT_PATH = OUTPUT_PATH + "/vins_result_no_loop.txt";
+ 
+
+    ACC_N = 0.08;
+    ACC_W = 4e-05;
+    GYR_N = 0.015;
+    GYR_W = 2e-06;
+    G.z()=9.81;
+    ROW = 1000;
+    COL = 1000;
+    // ROS_INFO("ROW: %f COL: %f ", ROW, COL);
+
+    ESTIMATE_EXTRINSIC = 0;
+    {
+        if (ESTIMATE_EXTRINSIC == 0){
+            std::cout << " fix extrinsic param " << endl;
+        }
+        cv::Mat cv_R, cv_T;
+        float R_data[9] = { 0, 0, -1,-1, 0, 0,0, 1, 0};
+        float t_data[3] ={ 0.05,0.04,0.03};
+        cv_R = cv::Mat(3, 3, CV_32F, R_data);
+        cv_T = cv::Mat(3, 1, CV_32F, t_data);
+        Eigen::Matrix3d eigen_R;
+        Eigen::Vector3d eigen_T;
+        cv::cv2eigen(cv_R, eigen_R);
+        cv::cv2eigen(cv_T, eigen_T);
+        Eigen::Quaterniond Q(eigen_R);
+        eigen_R = Q.normalized();
+        RIC.push_back(eigen_R);
+        TIC.push_back(eigen_T);
+ 
+    }
+
+    INIT_DEPTH = 5.0;
+    BIAS_ACC_THRESHOLD = 0.1;
+    BIAS_GYR_THRESHOLD = 0.1;
+
+    TD = 0;
+    ESTIMATE_TD = 0;
+    TR = 0;//Rolling shutter
+
+    MAX_CNT = 150;
+    MIN_DIST = 30;
+    ROW = 1000;//todo
+    COL = 1000;//todod
+    FREQ =  30;
+    F_THRESHOLD =1;
+    SHOW_TRACK = 1;
+    EQUALIZE =1;
+    FISHEYE =  0;
+ 
+ 
+    // WINDOW_SIZE = 20;
+    STEREO_TRACK = false;
+    PUB_THIS_FRAME = false;
+
+    cout << "1 readParameters:  "
+        <<  "\n  INIT_DEPTH: " << INIT_DEPTH
+        <<  "\n  MIN_PARALLAX: " << MIN_PARALLAX
+        <<  "\n  ACC_N: " <<ACC_N
+        <<  "\n  ACC_W: " <<ACC_W
+        <<  "\n  GYR_N: " <<GYR_N
+        <<  "\n  GYR_W: " <<GYR_W
+        <<  "\n  RIC:   " << RIC[0]
+        <<  "\n  TIC:   " <<TIC[0].transpose()
+        <<  "\n  G:     " <<G.transpose()
+        <<  "\n  BIAS_ACC_THRESHOLD:"<<BIAS_ACC_THRESHOLD
+        <<  "\n  BIAS_GYR_THRESHOLD:"<<BIAS_GYR_THRESHOLD
+        <<  "\n  SOLVER_TIME:"<<SOLVER_TIME
+        <<  "\n  NUM_ITERATIONS:"<<NUM_ITERATIONS
+        <<  "\n  ESTIMATE_EXTRINSIC:"<<ESTIMATE_EXTRINSIC
+        <<  "\n  ESTIMATE_TD:"<<ESTIMATE_TD
+        <<  "\n  ROLLING_SHUTTER:"<<ROLLING_SHUTTER
+        <<  "\n  ROW:"<<ROW
+        <<  "\n  COL:"<<COL
+        <<  "\n  TD:"<<TD
+        <<  "\n  TR:"<<TR
+        <<  "\n  FOCAL_LENGTH:"<<FOCAL_LENGTH
+        <<  "\n  IMAGE_TOPIC:"<<IMAGE_TOPIC
+        <<  "\n  IMU_TOPIC:"<<IMU_TOPIC
+        <<  "\n  FISHEYE_MASK:"<<FISHEYE_MASK
+        <<  "\n  MAX_CNT:"<<MAX_CNT
+        <<  "\n  MIN_DIST:"<<MIN_DIST
+        <<  "\n  FREQ:"<<FREQ
+        <<  "\n  F_THRESHOLD:"<<F_THRESHOLD
+        <<  "\n  SHOW_TRACK:"<<SHOW_TRACK
+        <<  "\n  STEREO_TRACK:"<<STEREO_TRACK
+        <<  "\n  EQUALIZE:"<<EQUALIZE
+        <<  "\n  FISHEYE:"<<FISHEYE
+        <<  "\n  PUB_THIS_FRAME:"<<PUB_THIS_FRAME
+    << endl;
+
+}
+
+
+        tic[0]= Eigen::Vector3d(0.05,0.04,0.03);
+
+        ric[0] <<0,0,1, -1, 0, 0,0, 1, 0; 
+        // cout << "1 Estimator::setParameter tic: " << tic[i].transpose()
+        //     << " ric: " << ric[i] << endl;
+    cout << "1 Estimator::setParameter FOCAL_LENGTH: " << FOCAL_LENGTH << endl;
+    f_manager.setRic(ric);
+    project_sqrt_info_ = FOCAL_LENGTH / 1.5 * Matrix2d::Identity();
+    td = TD;
+}
+
 void Estimator::clearState()
 {
     for (int i = 0; i < WINDOW_SIZE + 1; i++)

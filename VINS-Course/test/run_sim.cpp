@@ -46,8 +46,9 @@ void ParseImuData()
 	{
 		std::istringstream ssImuData(sImu_line);
 		ssImuData >> StampNSec >>_>>_>>_>>_>>_>>_>>_ >>vGyr.x() >> vGyr.y() >> vGyr.z() >>vAcc.x() >> vAcc.y() >> vAcc.z();
-		cout << "Imu t: " <<StampNSec << " gyr: " << vGyr.transpose() << " acc: " << vAcc.transpose() << endl;
-		//pSystem->PubImuData(StampNSec, vGyr, vAcc);
+		//cout << "Imu t: " <<StampNSec << " gyr: " << vGyr.transpose() << " acc: " << vAcc.transpose() << endl;
+		//cout<<"imu pub time "<<StampNSec << endl;
+		pSystem->PubImuData(StampNSec, vGyr, vAcc);
 		usleep(5000*nDelayTimes);
 	}
 	fsImu.close();
@@ -75,8 +76,7 @@ vector<double> ParseImageTimestamp()
 		ssTimestamp >> StampSec;
 		//cout << "timestamp: " <<StampSec << endl;
 		ts_vec.push_back(StampSec);
-		//pSystem->PubImuData(StampNSec, vGyr, vAcc);
-		//usleep(5000*nDelayTimes);
+
 	}
 	fsCam.close();
 
@@ -104,6 +104,7 @@ void ParseImageData()
 	//while (std::getline(fsImage, sImage_line) && !sImage_line.empty())
 	for (int i=0;i<ts_size;i++)
 	{
+		dStampNSec = ts_data[i];
 
 		std::stringstream file;
         file<<"/keyframe/all_points_"<<i<<".txt";
@@ -182,54 +183,17 @@ void ParseImageData()
 		// 	cerr << "image is empty! path: " << imagePath << endl;
 		// 	return;
 		// }
+		cout<<"img pub ts "<<dStampNSec<<endl;
 
 		pSystem->PubImageFeature(dStampNSec, feature_vec);
 		cv::imshow("SOURCE IMAGE", image_frame);
 		cv::waitKey(1);
-		usleep(5000*nDelayTimes);
+		usleep(5000*20/3*nDelayTimes);
 	}
 	
 }
 
-void PubImageData()
-{
-	string sImage_file = sConfig_path + "MH_05_cam0.txt";
-
-	cout << "1 PubImageData start sImage_file: " << sImage_file << endl;
-
-	ifstream fsImage;
-	fsImage.open(sImage_file.c_str());
-	if (!fsImage.is_open())
-	{
-		cerr << "Failed to open image file! " << sImage_file << endl;
-		return;
-	}
-
-	std::string sImage_line;
-	double dStampNSec;
-	string sImgFileName;
-	
-	// cv::namedWindow("SOURCE IMAGE", CV_WINDOW_AUTOSIZE);
-	while (std::getline(fsImage, sImage_line) && !sImage_line.empty())
-	{
-		std::istringstream ssImuData(sImage_line);
-		ssImuData >> dStampNSec >> sImgFileName;
-		// cout << "Image t : " << fixed << dStampNSec << " Name: " << sImgFileName << endl;
-		string imagePath = sData_path + "cam0/data/" + sImgFileName;
-
-		Mat img = imread(imagePath.c_str(), 0);
-		if (img.empty())
-		{
-			cerr << "image is empty! path: " << imagePath << endl;
-			return;
-		}
-		pSystem->PubImageData(dStampNSec / 1e9, img);
-		// cv::imshow("SOURCE IMAGE", img);
-		// cv::waitKey(0);
-		usleep(50000*nDelayTimes);
-	}
-	fsImage.close();
-}
+ 
 
  
 
@@ -244,20 +208,18 @@ int main(int argc, char **argv)
 	sData_path ="useless junk";
 	//sConfig_path = argv[2];
 	sConfig_path = "../sensor_data/";//TODO change it 
-	//ParseImageTimestamp();
-
 
 	pSystem.reset(new System());
 	
-	//std::thread thd_BackEnd(&System::ProcessBackEnd, pSystem);
+	std::thread thd_BackEnd(&System::ProcessBackEnd, pSystem);
 		
 	// sleep(5);
-	//std::thread thd_ParseImuData(ParseImuData);
-	//thd_ParseImuData.join();
+	std::thread thd_ParseImuData(ParseImuData);
 	 std::thread thd_PubImageData(ParseImageData);
 
-	// std::thread thd_Draw(&System::Draw, pSystem);
-	// thd_PubImuData.join();
+	std::thread thd_Draw(&System::Draw, pSystem);
+	//thd_PubImuData.join();
+	thd_ParseImuData.join();
 	thd_PubImageData.join();
 
 	// thd_BackEnd.join();

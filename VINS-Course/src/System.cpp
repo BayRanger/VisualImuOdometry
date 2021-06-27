@@ -37,7 +37,7 @@ System::System()
 
     // trackerData[0].readIntrinsicParameter(sConfig_file);
 
-    // estimator.setParameter();
+    estimator.setSimParameter();
     // ofs_pose.open("./pose_output.txt",fstream::app | fstream::out);
     // if(!ofs_pose.is_open())
     // {
@@ -230,7 +230,7 @@ void System::PubImageFeature(double dStampSec, vector<cv::Point2f>& img_features
     if (1)
     {
         pub_count++;
-        shared_ptr<feature_msg> feature_points(new feature_msg());
+        shared_ptr<IMG_MSG> feature_points(new IMG_MSG());
         feature_points->header = dStampSec;
  // They have the same values in x and y
             auto &un_pts = img_features;
@@ -243,10 +243,12 @@ void System::PubImageFeature(double dStampSec, vector<cv::Point2f>& img_features
                 double y = un_pts[j].y;
                 double z = 1;
                 feature_points->points.push_back(Vector3d(x, y, z));
-                //feature_points->id_of_point.push_back(p_id * NUM_OF_CAM + i);
-                feature_points->u_of_point.push_back(cur_pts[j].x);
-                feature_points->v_of_point.push_back(cur_pts[j].y);
-                cout<<"add id "<<j<<" point "<<cur_pts[j].x<<", "<<cur_pts[j].y<<endl; 
+                feature_points->id_of_point.push_back(j);
+                feature_points->u_of_point.push_back(cur_pts[j].x*FOCAL_LENGTH+ROW/2);
+                feature_points->v_of_point.push_back(cur_pts[j].y*FOCAL_LENGTH+COL/2);
+                feature_points->velocity_x_of_point.push_back(0);
+                feature_points->velocity_y_of_point.push_back(0);
+                //cout<<"add id "<<j<<" point "<<cur_pts[j].x<<", "<<cur_pts[j].y<<endl; 
 
             }
             //}
@@ -259,7 +261,7 @@ void System::PubImageFeature(double dStampSec, vector<cv::Point2f>& img_features
             else
             {
                 m_buf.lock();
-                naivefeature_buf.push(feature_points);
+                feature_buf.push(feature_points);
                 //cout << "5 PubImage t : " << fixed << feature_points->header
                 //     << " feature_buf size: " << feature_buf.size() << endl;
                 m_buf.unlock();

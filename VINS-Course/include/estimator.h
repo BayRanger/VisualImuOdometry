@@ -21,6 +21,7 @@ class Estimator
 {
   public:
     Estimator();
+    void setSimParameter();
 
     void setParameter();
 
