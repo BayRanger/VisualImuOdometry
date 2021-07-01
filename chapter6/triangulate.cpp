@@ -36,7 +36,7 @@ struct Pose
 int main()
 {
 
-    int poseNums = 10;
+    int poseNums = 20;
     double radius = 8;
     double fx = 1.;
     double fy = 1.;
@@ -63,7 +63,10 @@ int main()
     // 这个特征从第三帧相机开始被观测，i=3
     int start_frame_id = 3;
     int end_frame_id = poseNums;
-    for (int i = start_frame_id; i < end_frame_id; ++i) {
+    double time= 0.00;
+    //for (time =0.001;time<100;time=time*10)
+    {
+        for (int i = start_frame_id; i < end_frame_id; ++i) {
         Eigen::Matrix3d Rcw = camera_pose[i].Rwc.transpose();
         Eigen::Vector3d Pc = Rcw * (Pw - camera_pose[i].twc);//transform the point in world coordinate to camera
 
@@ -72,40 +75,62 @@ int main()
         double z = Pc.z();
 
         camera_pose[i].uv = Eigen::Vector2d(x/z,y/z);
+        std::default_random_engine generator_uv;
+         std::uniform_real_distribution<double> uv_rand(-1*time, 1*time);
+        double u_bias = uv_rand(generator);
+        double v_bias =  uv_rand(generator);
+        Eigen::Vector2d uv_bias={u_bias,v_bias};
+        //std::cout<<"uv at time "<<i<<" is "<<camera_pose[i].uv<<std::endl;
+        camera_pose[i].uv+=uv_bias;
+        //std::cout<<"uv add noise at time "<<i<<" is "<<camera_pose[i].uv<<std::endl;
+
     }
     
     /// TODO::homework; 请完成三角化估计深度的代码
     // 遍历所有的观测数据，并三角化
     
-    Eigen::Vector3d P_est;           // 结果保存到这个变量
-    P_est.setZero();
     /* your code begin */
-    int n = (end_frame_id - start_frame_id); 
-    Eigen::Matrix<double,Eigen::Dynamic, 4> D_mat;
-    D_mat.resize(2*n,4);
-    for (int i=0;i<n;i++)
-    {
-        int cam_idx = start_frame_id+i;
-        std::cout<<"uv "<<camera_pose[cam_idx].uv<<std::endl;
-        //std::cout<<"camera pose "<<i<<": "<<std::endl<<camera_pose[cam_idx].getPwc()<<std::endl;
-        D_mat.block(i*2,0,1,4) = camera_pose[cam_idx].uv[0]* camera_pose[cam_idx].getPcw().block(2,0,1,4)- camera_pose[cam_idx].getPcw().block(0,0,1,4);
-        D_mat.block(i*2+1,0,1,4) = camera_pose[cam_idx].uv[1]* camera_pose[cam_idx].getPcw().block(2,0,1,4)- camera_pose[cam_idx].getPcw().block(1,0,1,4);
-    }
-    Eigen::Matrix<double,4, 4> DTD= D_mat.transpose()*D_mat;
-    Eigen::JacobiSVD<Eigen::MatrixXd> svd(DTD, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    std::cout<<"V is "<<svd.matrixV()<<std::endl;
-    std::cout<<"U is "<<svd.matrixU()<<std::endl;
-    std::cout << "Its singular values are:" <<std::endl<< svd.singularValues() << std::endl;
-    P_est = svd.matrixV().block(0,3,3,1)*1.0/svd.matrixV()(3,3);//u4
 
+    int n = (end_frame_id - start_frame_id); 
+    for (int observ_n=1;observ_n<n;observ_n++)
+    {
+        Eigen::Vector3d P_est;           // 结果保存到这个变量
+        P_est.setZero();
+        Eigen::Matrix<double,Eigen::Dynamic, 4> D_mat;
+        D_mat.resize(2*n,4);
+        for (int i=0;i<observ_n;i++)
+        {
+            int cam_idx = start_frame_id+i;
+            //std::cout<<"uv "<<camera_pose[cam_idx].uv<<std::endl;
+            //std::cout<<"camera pose "<<i<<": "<<std::endl<<camera_pose[cam_idx].getPwc()<<std::endl;
+            D_mat.block(i*2,0,1,4) = camera_pose[cam_idx].uv[0]* camera_pose[cam_idx].getPcw().block(2,0,1,4)- camera_pose[cam_idx].getPcw().block(0,0,1,4);
+            D_mat.block(i*2+1,0,1,4) = camera_pose[cam_idx].uv[1]* camera_pose[cam_idx].getPcw().block(2,0,1,4)- camera_pose[cam_idx].getPcw().block(1,0,1,4);
+        }
+        Eigen::Matrix<double,4, 4> DTD= D_mat.transpose()*D_mat;
+        Eigen::JacobiSVD<Eigen::MatrixXd> svd(D_mat, Eigen::ComputeThinU | Eigen::ComputeThinV);
+        //std::cout<<"V is "<<svd.matrixV()<<std::endl;
+        //std::cout<<"U is "<<svd.matrixU()<<std::endl;
+        //std::cout << "Its singular values are:" <<std::endl<< svd.singularValues() << std::endl;
+        Eigen::Vector4d eigenvalues = svd.singularValues();
+        P_est = svd.matrixV().block(0,3,3,1)*1.0/svd.matrixV()(3,3);//u4
+        //std::cout<<"V"<<svd.matrixV()<<std::endl;
+        std::cout<<"Residual is "<<(Pw-P_est).norm()<<" when observ n is "<<observ_n<<std::endl;
+        //std::cout<<"The ratio is "<< eigenvalues[2]/eigenvalues[3]<<" when time is  "<<time<<std::endl;
+
+
+    }
+
+    
 
 
 
  
     /* your code end */
     
-    std::cout <<"ground truth: \n"<< Pw.transpose() <<std::endl;
-    std::cout <<"your result: \n"<< P_est.transpose() <<std::endl;
+    //std::cout <<"ground truth: \n"<< Pw.transpose() <<std::endl;
+    //std::cout <<"your result: \n"<< P_est.transpose() <<std::endl;
+    }
+
     // TODO:: 请如课程讲解中提到的判断三角化结果好坏的方式，绘制奇异值比值变化曲线
     return 0;
 }
