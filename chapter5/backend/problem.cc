@@ -389,7 +389,7 @@ void Problem::SolveLinearSystem() {
         // TODO:: home work. 完成舒尔补 Hpp, bpp 代码
         MatXX tempH = Hpm * Hmm_inv;
         H_pp_schur_ = Hessian_.block(0,0,ordering_poses_,ordering_poses_) - tempH * Hmp;
-        b_pp_schur_ = bpp + tempH *bmm;//TODO: if we need to add a negative symbol
+        b_pp_schur_ = bpp - tempH *bmm;//TODO: if we need to add a negative symbol
 
         // step2: solve Hpp * delta_x = bpp
         VecX delta_x_pp(VecX::Zero(reserve_size));

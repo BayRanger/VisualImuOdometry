@@ -3,6 +3,8 @@
 #include "backend/vertex_inverse_depth.h"
 #include "backend/vertex_pose.h"
 #include "backend/edge_reprojection.h"
+#include "backend/edge_prior.h"
+
 #include "backend/problem.h"
 
 using namespace myslam::backend;
@@ -80,8 +82,21 @@ int main() {
 //        if(i < 2)
 //            vertexCam->SetFixed();//设置定点为fix。避免被优化
 
+
         problem.AddVertex(vertexCam);
         vertexCams_vec.push_back(vertexCam);
+    }
+    //Add the edge to provide prior constraints
+    for (size_t k =0;k<1;k++)
+    {
+        shared_ptr<EdgeSE3Prior> edge_prior(new EdgeSE3Prior(cameras[k].twc, cameras[k].qwc));
+        std::vector<std::shared_ptr<Vertex> > edge_prior_vertex;
+        edge_prior_vertex.push_back(vertexCams_vec[0]);
+        edge_prior->SetVertex(edge_prior_vertex);
+        double weight=1000000000;
+        edge_prior->SetInformation(edge_prior->Information()*weight);
+        problem.AddEdge(edge_prior);
+
     }
 
     // 所有 Point 及 edge
