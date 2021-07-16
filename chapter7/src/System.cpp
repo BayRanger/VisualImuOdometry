@@ -1,5 +1,5 @@
 #include "System.h"
-
+#include <fstream>
 #include <pangolin/pangolin.h>
 
 using namespace std;
@@ -9,6 +9,7 @@ using namespace pangolin;
 System::System(string sConfig_file_)
     :bStart_backend(true)
 {
+    double start_ts = 0;
     string sConfig_file = sConfig_file_ + "euroc_config.yaml";
 
     cout << "1 System() sConfig_file: " << sConfig_file << endl;
@@ -17,7 +18,7 @@ System::System(string sConfig_file_)
     trackerData[0].readIntrinsicParameter(sConfig_file);
 
     estimator.setParameter();
-    ofs_pose.open("./pose_output.txt",fstream::app | fstream::out);
+    ofs_pose.open("pose_output_nonoise.txt");
     if(!ofs_pose.is_open())
     {
         cerr << "ofs_pose is not open" << endl;
@@ -30,13 +31,11 @@ System::System(string sConfig_file_)
 System::System()
     :bStart_backend(true)
 {
-    // string sConfig_file = sConfig_file_ + "euroc_config.yaml";
-
-    // cout << "1 System() sConfig_file: " << sConfig_file << endl;
-    // readParameters(sConfig_file);
-
-    // trackerData[0].readIntrinsicParameter(sConfig_file);
-
+    ofs_pose.open("pose_output_nonoise.txt");
+    if(!ofs_pose.is_open())
+    {
+        cerr << "ofs_pose is not open" << endl;
+    }
     estimator.setSimParameter();
     // ofs_pose.open("./pose_output.txt",fstream::app | fstream::out);
     // if(!ofs_pose.is_open())
@@ -199,32 +198,6 @@ void System::PubImageFeature(double dStampSec, vector<cv::Point2f>& img_features
         last_image_time = dStampSec;
         return;
     }
-    // detect unstable camera stream
-    // if (dStampSec - last_image_time > 1.0 || dStampSec < last_image_time)
-    // {
-    //     cerr << "3 PubImageData image discontinue! reset the feature tracker!" << endl;
-    //     first_image_flag = true;
-    //     last_image_time = 0;
-    //     pub_count = 1;
-    //     return;
-    // }
-    // last_image_time = dStampSec;
-    // // frequency control
-    // if (round(1.0 * pub_count / (dStampSec - first_image_time)) <= FREQ) //publish frequency is slow
-    // {
-    //     PUB_THIS_FRAME = true;
-    //     // reset the frequency control
-    //     if (abs(1.0 * pub_count / (dStampSec - first_image_time) - FREQ) < 0.01 * FREQ)
-    //     {
-    //         first_image_time = dStampSec;
-    //         pub_count = 0;
-    //     }
-    // }
-    // else
-    // {
-    //     PUB_THIS_FRAME = false;
-    // }
-    // cout<<"If pub this frame "<<PUB_THIS_FRAME<<endl;
 
     TicToc t_r;
     if (1)
