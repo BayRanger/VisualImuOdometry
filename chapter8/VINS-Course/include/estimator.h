@@ -12,6 +12,7 @@
 #include "factor/integration_base.h"
 
 #include "backend/problem.h"
+#include "backend/subproblem.h"
 
 #include <unordered_map>
 #include <queue>

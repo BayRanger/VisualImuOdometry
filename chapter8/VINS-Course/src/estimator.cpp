@@ -906,7 +906,7 @@ void Estimator::problemSolve()
     //    lossfunction = new backend::TukeyLoss(1.0);
 
     // step1. 构建 problem
-    backend::Problem problem(backend::Problem::ProblemType::SLAM_PROBLEM);
+    backend::subproblem problem(backend::Problem::ProblemType::SLAM_PROBLEM);
     vector<shared_ptr<backend::VertexPose>> vertexCams_vec;
     vector<shared_ptr<backend::VertexSpeedBias>> vertexVB_vec;
     int pose_dim = 0;

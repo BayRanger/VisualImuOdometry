@@ -89,7 +89,7 @@ public:
     //test compute prior
     void TestComputePrior();
 
-private:
+protected:
 
     /// Solve的实现，解通用问题
     bool SolveGenericProblem(int iterations);
@@ -139,7 +139,7 @@ private:
 
     /// Levenberg
     /// 计算LM算法的初始Lambda
-    void ComputeLambdaInitLM();
+    virtual void ComputeLambdaInitLM();
 
     /// Hessian 对角线加上或者减去  Lambda
     void AddLambdatoHessianLM();
@@ -147,7 +147,7 @@ private:
     void RemoveLambdaHessianLM();
 
     /// LM 算法中用于判断 Lambda 在上次迭代中是否可以，以及Lambda怎么缩放
-    bool IsGoodStepInLM();
+    virtual bool IsGoodStepInLM();
 
     /// PCG 迭代线性求解器
     VecX PCGSolver(const MatXX &A, const VecX &b, int maxIter);

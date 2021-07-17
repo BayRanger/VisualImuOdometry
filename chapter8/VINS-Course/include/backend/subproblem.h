@@ -21,6 +21,10 @@ class subproblem : public Problem
                 void show();
                 subproblem(ProblemType problemType);
 
+            private:
+                void ComputeLambdaInitLM();
+                bool IsGoodStepInLM();
+
             
         };
     }

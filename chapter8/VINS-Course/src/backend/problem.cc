@@ -240,7 +240,7 @@ bool Problem::Solve(int iterations) {
 //        if (sqrt(currentChi_) < 1e-15)
         if(last_chi_ - currentChi_ < 1e-5)
         {
-            std::cout << "sqrt(currentChi_) <= stopThresholdLM_" << std::endl;
+            std::cout<<"Last_chi_ " <<last_chi_<<"  CurrentChi_ "<<currentChi_<< "sqrt(currentChi_) <= stopThresholdLM_" << std::endl;
             stop = true;
         }
         last_chi_ = currentChi_;
@@ -544,6 +544,7 @@ void Problem::RemoveLambdaHessianLM() {
 }
 
 bool Problem::IsGoodStepInLM() {
+    cout<<"Come to here"<<endl;
     double scale = 0;
 //    scale = 0.5 * delta_x_.transpose() * (currentLambda_ * delta_x_ + b_);
 //    scale += 1e-3;    // make sure it's non-zero :)

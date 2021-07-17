@@ -6,6 +6,8 @@
 #define SLAM_COURSE_BACKEND_H
 
 #include "problem.h"
+#include "subproblem.h"
+
 #include "vertex.h"
 #include "edge.h"
 #include "loss_function.h"
